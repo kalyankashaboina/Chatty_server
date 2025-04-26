@@ -15,8 +15,10 @@ const app = express();
 // Allowed front-end origins
 const allowedOrigins = [
   //'http://localhost:5173',
-  'https://chatty-jqz124liq-kalyankashaboinas-projects.vercel.app', 
+  //'https://chatty-jqz124liq-kalyankashaboinas-projects.vercel.app', 
+  'https://chatty-bay-eight.vercel.app',
 ];
+
 
 app.use(cookieParser()); 
 // CORS configuration
