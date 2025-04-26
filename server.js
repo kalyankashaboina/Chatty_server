@@ -14,8 +14,8 @@ const app = express();
 
 // Allowed front-end origins
 const allowedOrigins = [
-  'http://localhost:5173',
- // 'https://your-production-domain.com', 
+  //'http://localhost:5173',
+  'https://chatty-jqz124liq-kalyankashaboinas-projects.vercel.app', 
 ];
 
 app.use(cookieParser()); 
