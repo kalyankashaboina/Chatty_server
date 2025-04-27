@@ -1,6 +1,6 @@
-// utils/auth.js
-
 const jwt = require('jsonwebtoken');
+const cookie = require('cookie');
+
 
 // Generate JWT token
 const generateToken = (userId) => {
@@ -23,17 +23,29 @@ const verifyToken = (token) => {
 // Set token as a cookie in response
 const setTokenCookie = (res, token) => {
   res.cookie('token', token, {
-    httpOnly: true,  
-    // secure:true,
+    httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000, 
-    sameSite: 'None',
-
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+    maxAge: 24 * 60 * 60 * 1000,
   });
+  console.log("✅ Token set in cookie:", token);  
+};
+
+// Retrieve token from cookies in the request
+const getTokenFromCookies = (req) => {
+console.log("🔑 Token from cookies in auth.js:", req.headers)
+
+  const cookies = req.headers.cookie;
+  if (!cookies) return null;
+  
+  const parsedCookies = cookie.parse(cookies);
+  console.log("🔑 Parsed cookies:", parsedCookies)
+  return parsedCookies.token || null;
 };
 
 module.exports = {
   generateToken,
   verifyToken,
   setTokenCookie,
+  getTokenFromCookies,
 };

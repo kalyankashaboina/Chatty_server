@@ -1,18 +1,22 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const Message = require("../models/Message"); // ✅ Needed for fetching messages
+const { verifyToken, getTokenFromCookies } = require('./auth');
 const { addUser, removeUser, getSocketIdByUserId } = require("./onlineUsers");
-const { addMessageToQueue } = require("../utils/messageQueue");
+const User = require('../models/User');
+const jwt = require('jsonwebtoken');
+const { addMessageToQueue } = require("./messageQueue");
+const Message = require("../models/Message");
 
 const handleSocketConnection = (io) => {
   io.on("connection", (socket) => {
-    const token = socket.handshake.query.token;
+    // Get token from handshake headers (cookies)
+    const token = getTokenFromCookies(socket.request);
+    console.log("🔑 Token from cookies:", token);
 
     if (!token) {
-      console.log("❌ No token, disconnecting socket");
+      console.log("❌ No token in cookies, disconnecting socket");
       return socket.disconnect();
     }
 
+    // Verify token
     jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
       if (err) {
         console.log("❌ JWT invalid, disconnecting socket");
@@ -21,31 +25,30 @@ const handleSocketConnection = (io) => {
 
       const userId = decoded.userId;
       socket.userId = userId;
+      
+      // Add user to online users
       addUser(userId, socket.id);
 
       try {
+        // Set the user as online in DB
         await User.findByIdAndUpdate(userId, { isOnline: true });
       } catch (e) {
         console.error("❌ Error updating user online status:", e);
       }
 
+      // Broadcast user online status
       socket.broadcast.emit("userOnline", { userId });
-
       console.log(`✅ User ${userId} connected (Socket: ${socket.id})`);
 
-      // 💬 Handle sending messages
-      // 💬 Handle sending messages
+      // Handle sending messages
       socket.on("sendMessage", (data) => {
         const { recipientId, content, type = null, mediaUrl = null } = data;
         const senderId = socket.userId;
         const recipientSocketId = getSocketIdByUserId(recipientId);
 
-        // console.log("📤 Sending message from", senderId, "to", recipientId);
-        // console.log("📄 Message Type:", type);
-        // console.log("💬 Content:", content);
         if (mediaUrl) console.log("🌐 Media URL:", mediaUrl);
 
-        // ✅ Add message to batch queue for saving
+        // Add message to batch queue for saving
         addMessageToQueue({
           sender: senderId,
           recipient: recipientId,
@@ -55,7 +58,7 @@ const handleSocketConnection = (io) => {
           timestamp: new Date(),
         });
 
-        // ✅ Emit to recipient if online
+        // Emit to recipient if online
         if (recipientSocketId) {
           io.to(recipientSocketId).emit("message", {
             senderId,
@@ -70,7 +73,7 @@ const handleSocketConnection = (io) => {
         }
       });
 
-      // 📥 Handle fetching last 20 messages
+      // Handle getting recent messages
       socket.on("getRecentMessages", async (otherUserId) => {
         try {
           const messages = await Message.find({
@@ -89,7 +92,7 @@ const handleSocketConnection = (io) => {
         }
       });
 
-      // ❌ Handle disconnect
+      // Handle user disconnect
       socket.on("disconnect", async () => {
         removeUser(userId);
 
@@ -102,8 +105,20 @@ const handleSocketConnection = (io) => {
           console.error("❌ Error updating offline status:", e);
         }
 
+        // Emit the user offline event to other users
         socket.broadcast.emit("userOffline", { userId });
         console.log(`❌ User ${userId} disconnected`);
+      });
+
+      // Handle reconnect event to mark user as online again
+      socket.on('reconnect', async () => {
+        try {
+          await User.findByIdAndUpdate(userId, { isOnline: true });
+          socket.broadcast.emit("userOnline", { userId });
+          console.log(`✅ User ${userId} reconnected`);
+        } catch (e) {
+          console.error("❌ Error updating user online status on reconnect:", e);
+        }
       });
     });
   });

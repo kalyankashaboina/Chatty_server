@@ -50,8 +50,9 @@ const getMessages = async (req, res) => {
 // Controller to fetch the last 20 messages between two users
 const getLast20Messages = async (req, res) => {
   const { userId, selectedUserId } = req.query;
-  // console.log("userId", userId);
-  // console.log("selectedUserId", selectedUserId);
+  
+  console.log("userId", userId);
+  console.log("selectedUserId", selectedUserId);
 
   if (!userId || !selectedUserId) {
     return res
