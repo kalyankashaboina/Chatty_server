@@ -16,7 +16,8 @@ const app = express();
 const allowedOrigins = [
   //'http://localhost:5173',
   //'https://chatty-jqz124liq-kalyankashaboinas-projects.vercel.app', 
-  'https://chatty-bay-eight.vercel.app',
+  //'https://chatty-bay-eight.vercel.app',
+ 'https://chatty-navy.vercel.app/'
 ];
 
 
