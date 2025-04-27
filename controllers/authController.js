@@ -19,7 +19,7 @@ const register = async (req, res) => {
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Internal Server Error. Please try again later.' });
   }
 };
 
@@ -35,29 +35,32 @@ const login = async (req, res) => {
     if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
     const token = generateToken(user._id);
-    setTokenCookie(res,token)
+    setTokenCookie(res, token);
 
     res.status(200).json({ message: 'Login successful', token, user });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Internal Server Error. Please try again later.' });
   }
 };
 
-
+// Get list of users for sidebar
 const sidebarUsers = async (req, res) => {
-  const userId = req.userId; // Assuming userId is stored in the JWT token payload
+  const userId = req.userId;
 
   try {
-    const users = await User.find({ _id: { $ne: userId } }).select('_id fullName'); 
+    const users = await User.find({ _id: { $ne: userId } }).select('_id fullName');
+    if (!users) {
+      return res.status(404).json({ message: 'No users found' });
+    }
+    console.log('Sidebar users:', users);
     res.status(200).json({ users });
   } catch (error) {
     console.error('Error fetching users:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Internal Server Error. Please try again later.' });
   }
 };
 
-// Export all functions as a module
 module.exports = {
   register,
   login,
