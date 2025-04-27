@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const authenticate = (req, res, next) => {
   // Get token from cookies instead of Authorization header
   const token = req.cookies.token; 
+  console.log(`Token received: ${token}`); // Log the token for debugging
 
   if (!token) {
     return res.status(401).json({ message: 'Authentication token is required' });
