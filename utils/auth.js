@@ -33,7 +33,7 @@ const setTokenCookie = (res, token) => {
 
 // Retrieve token from cookies in the request
 const getTokenFromCookies = (req) => {
-console.log("🔑 Token from cookies in auth.js:", req.headers)
+console.log("🔑 Token from cookies in auth.js:", req.headers.cookie)
 
   const cookies = req.headers.cookie;
   if (!cookies) return null;
@@ -43,9 +43,21 @@ console.log("🔑 Token from cookies in auth.js:", req.headers)
   return parsedCookies.token || null;
 };
 
+
+// 🔐 Retrieve token from Authorization header
+const getTokenFromAuthHeader = (req) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    console.log("🔑 Token from Authorization header:", token);
+    return token;
+  }
+  return null;
+};
 module.exports = {
   generateToken,
   verifyToken,
   setTokenCookie,
   getTokenFromCookies,
+  getTokenFromAuthHeader,
 };
