@@ -1,5 +1,5 @@
 const { verifyToken, getTokenFromCookies } = require('./auth');
-const { addUser, removeUser, getSocketIdByUserId } = require("./onlineUsers");
+const { addUser, removeUser, getSocketIdByUserId, getOnlineUsers } = require("./onlineUsers");
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { addMessageToQueue } = require("./messageQueue");
@@ -8,9 +8,14 @@ const Message = require("../models/Message");
 const handleSocketConnection = (io) => {
   io.on("connection", (socket) => {
     // Get token from handshake headers (cookies)
-    const token = getTokenFromCookies(socket.request);
+    let token = getTokenFromCookies(socket.request);
     console.log("🔑 Token from cookies:", token);
 
+    if (!token) {
+      // If token not found in cookies, check the handshake query parameters
+      token = socket.handshake.query.token;
+      console.log("🔑 Token from handshake query:", token);
+    }
     if (!token) {
       console.log("❌ No token in cookies, disconnecting socket");
       return socket.disconnect();
@@ -25,7 +30,7 @@ const handleSocketConnection = (io) => {
 
       const userId = decoded.userId;
       socket.userId = userId;
-      
+
       // Add user to online users
       addUser(userId, socket.id);
 
@@ -36,10 +41,36 @@ const handleSocketConnection = (io) => {
         console.error("❌ Error updating user online status:", e);
       }
 
+
       // Broadcast user online status
       socket.broadcast.emit("userOnline", { userId });
-      console.log(`✅ User ${userId} connected (Socket: ${socket.id})`);
+      // console.log(`✅ User ${userId} connected (Socket: ${socket.id})`);
+      console.log(`✅ User ${userId} connected (Socket ID: ${socket.id})`);
+      console.log("🔑 Online users:", getOnlineUsers()); 
 
+
+      socket.on("typing", (data) => {
+        const { recipientId } = data;
+        console.log("✏️ Typing event received:", data);
+        const recipientSocketId = getSocketIdByUserId(recipientId);
+        console.log("✏️ Recipient socket ID:", recipientSocketId);
+        if (recipientSocketId) {
+          io.to(recipientSocketId).emit("typing", { senderId: socket.userId });
+        }
+      });
+      
+      socket.on("stoppedTyping", (data) => {
+        console.log("✏️ Stopped typing event received:", data);
+        const { recipientId } = data;
+   
+        console.log("✏️ Recipient socket ID:", recipientId);
+        const recipientSocketId = getSocketIdByUserId(recipientId);
+        console.log("✏️ Recipient socket ID:", recipientSocketId);
+        if (recipientSocketId) {
+          io.to(recipientSocketId).emit("stoppedTyping", { senderId: socket.userId });
+        }
+      });
+      
       // Handle sending messages
       socket.on("sendMessage", (data) => {
         const { recipientId, content, type = null, mediaUrl = null } = data;
