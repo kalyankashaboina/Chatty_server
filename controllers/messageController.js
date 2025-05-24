@@ -48,43 +48,52 @@ const getMessages = async (req, res) => {
 
 
 // Controller to fetch the last 20 messages between two users
+
 const getLast20Messages = async (req, res) => {
-  const { userId, selectedUserId } = req.query;
-  
-  console.log("userId", userId);
-  console.log("selectedUserId", selectedUserId);
+  console.log("💬 Fetching paginated messages:", req.query);
+  const { userId, selectedUserId, page = 1, limit = 20 } = req.query;
 
   if (!userId || !selectedUserId) {
-    return res
-      .status(400)
-      .json({ error: "Both userId and selectedUserId are required" });
+    return res.status(400).json({ error: "Both userId and selectedUserId are required" });
   }
 
-  // Validate ObjectIds (just a safety measure)
-  if (
-    !Types.ObjectId.isValid(userId) ||
-    !Types.ObjectId.isValid(selectedUserId)
-  ) {
+  if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(selectedUserId)) {
     return res.status(400).json({ error: "Invalid userId or selectedUserId" });
   }
 
+  const pageNumber = parseInt(page, 10);
+  const pageSize = parseInt(limit, 10);
+
+  if (isNaN(pageNumber) || pageNumber <= 0 || isNaN(pageSize) || pageSize <= 0) {
+    return res.status(400).json({ error: "Invalid page or limit values" });
+  }
+
   try {
-    // Fetch last 20 messages between the two users
+    // Count total messages between users
+    const totalMessages = await Message.countDocuments({
+      $or: [
+        { sender: userId, recipient: selectedUserId },
+        { sender: selectedUserId, recipient: userId },
+      ],
+    });
+
+    // Fetch paginated messages
+    const skip = (pageNumber - 1) * pageSize;
+
     const messages = await Message.find({
       $or: [
         { sender: userId, recipient: selectedUserId },
         { sender: selectedUserId, recipient: userId },
       ],
     })
-      .sort({ createdAt: -1 }) // Sort messages by creation time in descending order
-      .limit(20); // Limit to the last 20 messages
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pageSize);
 
-    // Reverse messages to show oldest first
-    const reversedMessages = messages.reverse();
-    // console.log("reversedMessages", reversedMessages);
-
-    // Return the messages in the response
-    res.json(reversedMessages);
+    res.json({
+      messages: messages.reverse(), // so oldest comes first in chat display
+      total: totalMessages,
+    });
   } catch (err) {
     console.error("Error fetching messages:", err);
     res.status(500).json({ error: "Server error while fetching messages" });

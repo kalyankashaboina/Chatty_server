@@ -90,7 +90,7 @@ const logout = (req, res) => {
 // Get list of users for sidebar
 const sidebarUsers = async (req, res) => {
   const userId = req.user.id;
-  console.log("💬 Fetching sidebar users for userId:", userId);
+  // console.log("💬 Fetching sidebar users for userId:", userId);
 
   try {
     const users = await User.find({ _id: { $ne: userId } }).select('_id  username');
