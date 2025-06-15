@@ -57,7 +57,8 @@ const login = async (req, res) => {
     console.log('✅ Token set in cookie');
 
 
-    res.status(200).json({ message: 'Login successful', user, token });
+    res.status(200).json({ message: 'Login successful', user: { id: user._id, username: user.username, email: user.email } });
+    console.log(`✅ User logged in: ${user.username} (${user._id})`);
 
   } catch (error) {
     console.error('💥 Login error:', error);

@@ -1,85 +1,118 @@
-const { verifyToken, getTokenFromCookies } = require('./auth');
-const { addUser, removeUser, getSocketIdByUserId, getOnlineUsers } = require("./onlineUsers");
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+const { verifyToken, getTokenFromCookies } = require("./auth");
+const {
+  addUser,
+  removeUser,
+  getOnlineUsers,
+  getSocketIdByUserId,
+} = require("./onlineUsers");
+const User = require("../models/User");
+const jwt = require("jsonwebtoken");
 const { addMessageToQueue } = require("./messageQueue");
 const Message = require("../models/Message");
 
 const handleSocketConnection = (io) => {
   io.on("connection", (socket) => {
-    // Get token from handshake headers (cookies)
-    let token = getTokenFromCookies(socket.request);
-    console.log("🔑 Token from cookies:", token);
-
+let token = getTokenFromCookies(socket.request);
+console.log("🔑 Token from cookies:", token);
     if (!token) {
-      // If token not found in cookies, check the handshake query parameters
-      token = socket.handshake.query.token;
-      console.log("🔑 Token from handshake query:", token);
-    }
-    if (!token) {
-      console.log("❌ No token in cookies, disconnecting socket");
+      console.log("❌ No token, disconnecting socket");
       return socket.disconnect();
     }
 
-    // Verify token
     jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
       if (err) {
-        console.log("❌ JWT invalid, disconnecting socket");
+        console.log("❌ Invalid token");
         return socket.disconnect();
       }
 
       const userId = decoded.userId;
       socket.userId = userId;
 
-      // Add user to online users
+      // Add the user to the online users
       addUser(userId, socket.id);
 
       try {
-        // Set the user as online in DB
         await User.findByIdAndUpdate(userId, { isOnline: true });
       } catch (e) {
         console.error("❌ Error updating user online status:", e);
       }
 
+      // Log current online users
+      console.log(
+        "🔑 Current online users after connection:",
+        getOnlineUsers()
+      );
 
-      // Broadcast user online status
+      // Broadcast user online status to others
       socket.broadcast.emit("userOnline", { userId });
-      // console.log(`✅ User ${userId} connected (Socket: ${socket.id})`);
       console.log(`✅ User ${userId} connected (Socket ID: ${socket.id})`);
-      console.log("🔑 Online users:", getOnlineUsers()); 
 
-
-      socket.on("typing", (data) => {
-        const { recipientId } = data;
-        console.log("✏️ Typing event received:", data);
+      // Video call feature - Offer
+      socket.on("offer", (offer, recipientId) => {
+        console.log(
+          `📞 Offer received from ${socket.userId} to ${recipientId}`
+        );
         const recipientSocketId = getSocketIdByUserId(recipientId);
-        console.log("✏️ Recipient socket ID:", recipientSocketId);
-        if (recipientSocketId) {
-          io.to(recipientSocketId).emit("typing", { senderId: socket.userId });
+        if (recipientSocketId.length > 0) {
+          recipientSocketId.forEach((sid) =>
+            io.to(sid).emit("offer", offer, socket.userId)
+          );
         }
       });
-      
-      socket.on("stoppedTyping", (data) => {
-        console.log("✏️ Stopped typing event received:", data);
-        const { recipientId } = data;
-   
-        console.log("✏️ Recipient socket ID:", recipientId);
+
+      // Video call feature - Answer
+      socket.on("answer", (answer, recipientId) => {
+        console.log(
+          `📞 Answer received from ${socket.userId} to ${recipientId}`
+        );
         const recipientSocketId = getSocketIdByUserId(recipientId);
-        console.log("✏️ Recipient socket ID:", recipientSocketId);
-        if (recipientSocketId) {
-          io.to(recipientSocketId).emit("stoppedTyping", { senderId: socket.userId });
+        if (recipientSocketId.length > 0) {
+          recipientSocketId.forEach((sid) =>
+            io.to(sid).emit("answer", answer, socket.userId)
+          );
         }
       });
-      
-      // Handle sending messages
+
+      // Video call feature - ICE Candidate
+      socket.on("ice-candidate", (candidate, recipientId) => {
+        console.log(
+          `📞 ICE candidate received from ${socket.userId} to ${recipientId}`
+        );
+        const recipientSocketId = getSocketIdByUserId(recipientId);
+        if (recipientSocketId.length > 0) {
+          recipientSocketId.forEach((sid) =>
+            io.to(sid).emit("ice-candidate", candidate, socket.userId)
+          );
+        }
+      });
+
+      // Typing and stopped typing events
+      socket.on("typing", ({ recipientId }) => {
+        const recipientSockets = getSocketIdByUserId(recipientId);
+        if (recipientSockets.length > 0) {
+          recipientSockets.forEach((sid) =>
+            io.to(sid).emit("typing", { senderId: userId })
+          );
+        }
+      });
+
+      socket.on("stoppedTyping", ({ recipientId }) => {
+        const recipientSockets = getSocketIdByUserId(recipientId);
+        if (recipientSockets.length > 0) {
+          recipientSockets.forEach((sid) =>
+            io.to(sid).emit("stoppedTyping", { senderId: userId })
+          );
+        }
+      });
+
+      // Sending messages
       socket.on("sendMessage", (data) => {
         const { recipientId, content, type = null, mediaUrl = null } = data;
-        const senderId = socket.userId;
-        const recipientSocketId = getSocketIdByUserId(recipientId);
+        const senderId = userId;
+        const recipientSockets = getSocketIdByUserId(recipientId);
 
         if (mediaUrl) console.log("🌐 Media URL:", mediaUrl);
 
-        // Add message to batch queue for saving
         addMessageToQueue({
           sender: senderId,
           recipient: recipientId,
@@ -89,66 +122,84 @@ const handleSocketConnection = (io) => {
           timestamp: new Date(),
         });
 
-        // Emit to recipient if online
-        if (recipientSocketId) {
-          io.to(recipientSocketId).emit("message", {
-            senderId,
-            type,
-            content,
-            mediaUrl,
-          });
+        // Log current online users before sending the message
+        console.log(
+          "🔑 Current online users before sending message:",
+          getOnlineUsers()
+        );
 
-          console.log("✅ Message delivered to recipient.");
+        if (recipientSockets.length > 0) {
+          recipientSockets.forEach((sid) => {
+            io.to(sid).emit("message", {
+              senderId,
+              type,
+              content,
+              mediaUrl,
+            });
+          });
+          console.log("✅ Message delivered");
         } else {
           console.log("⚠️ Recipient offline. Message queued.");
         }
       });
 
-      // Handle getting recent messages
+      // Fetch recent messages between users
       socket.on("getRecentMessages", async (otherUserId) => {
         try {
           const messages = await Message.find({
             $or: [
-              { sender: socket.userId, recipient: otherUserId },
-              { sender: otherUserId, recipient: socket.userId },
+              { sender: userId, recipient: otherUserId },
+              { sender: otherUserId, recipient: userId },
             ],
           })
             .sort({ timestamp: -1 })
             .limit(20)
             .lean();
 
-          socket.emit("recentMessages", messages.reverse()); // send in correct order
+          socket.emit("recentMessages", messages.reverse());
         } catch (err) {
           console.error("❌ Error fetching recent messages:", err);
         }
       });
 
-      // Handle user disconnect
+      // Disconnect handling
       socket.on("disconnect", async () => {
-        removeUser(userId);
+        removeUser(userId, socket.id);
 
-        try {
-          await User.findByIdAndUpdate(userId, {
-            isOnline: false,
-            lastSeen: Date.now(),
-          });
-        } catch (e) {
-          console.error("❌ Error updating offline status:", e);
+        const remainingSockets = getSocketIdByUserId(userId);
+        if (remainingSockets.length === 0) {
+          try {
+            await User.findByIdAndUpdate(userId, {
+              isOnline: false,
+              lastSeen: Date.now(),
+            });
+            socket.broadcast.emit("userOffline", { userId });
+            console.log(`❌ User ${userId} disconnected (fully offline)`);
+          } catch (e) {
+            console.error("❌ Error updating offline status:", e);
+          }
+        } else {
+          console.log(`👤 User ${userId} still has active connections`);
         }
 
-        // Emit the user offline event to other users
-        socket.broadcast.emit("userOffline", { userId });
-        console.log(`❌ User ${userId} disconnected`);
+        // Log current online users after disconnect
+        console.log(
+          "🔑 Current online users after disconnect:",
+          getOnlineUsers()
+        );
       });
 
-      // Handle reconnect event to mark user as online again
-      socket.on('reconnect', async () => {
+      // Reconnection handling
+      socket.on("reconnect", async () => {
         try {
           await User.findByIdAndUpdate(userId, { isOnline: true });
           socket.broadcast.emit("userOnline", { userId });
           console.log(`✅ User ${userId} reconnected`);
         } catch (e) {
-          console.error("❌ Error updating user online status on reconnect:", e);
+          console.error(
+            "❌ Error updating user online status on reconnect:",
+            e
+          );
         }
       });
     });
