@@ -1,9 +1,9 @@
 // utils/messageQueue.js
-const Message = require("../models/Message");
+const Message = require('../models/Message');
 
 let messageBuffer = [];
 
-const addMessageToQueue = (message) => {
+const addMessageToQueue = message => {
   messageBuffer.push(message);
 };
 
@@ -15,7 +15,7 @@ const flushMessages = async () => {
     console.log(`🗂️ Flushed ${messageBuffer.length} messages to DB.`);
     messageBuffer = [];
   } catch (err) {
-    console.error("Error saving messages batch:", err);
+    console.error('Error saving messages batch:', err);
   }
 };
 

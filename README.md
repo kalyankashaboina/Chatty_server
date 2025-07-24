@@ -22,38 +22,41 @@ This is the backend service for the Chat Application. It provides APIs and handl
 ## Installation
 
 1. Clone the repository:
-    ```bash
-    git clone https://github.com/your-username/chat-app-backend.git
-    cd chat-app-backend
-    ```
+
+   ```bash
+   git clone https://github.com/your-username/chat-app-backend.git
+   cd chat-app-backend
+   ```
 
 2. Install dependencies:
-    ```bash
-    npm install
-    ```
+
+   ```bash
+   npm install
+   ```
 
 3. Set up environment variables:
-    Create a `.env` file in the root directory and add the following:
-    ```
-    PORT=5000
-    MONGO_URI=your_mongodb_connection_string
-    JWT_SECRET=your_jwt_secret
-    ```
+   Create a `.env` file in the root directory and add the following:
+
+   ```
+   PORT=5000
+   MONGO_URI=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret
+   ```
 
 4. Start the server:
-    ```bash
-    npm start
-    ```
+   ```bash
+   npm start
+   ```
 
 ## API Endpoints
 
-| Method | Endpoint         | Description               |
-|--------|------------------|---------------------------|
-| POST   | `/api/auth/login` | User login (token stored securely in cookies) |
-| POST   | `/api/auth/register` | User registration      |
-| GET    | `/api/messages/:roomId` | Fetch chat history |
-| GET    | `/api/auth/sidebar` | Get list of sidebar users (requires authentication) |
-| POST   | `/api/messages`   | Send a new message       |
+| Method | Endpoint                | Description                                         |
+| ------ | ----------------------- | --------------------------------------------------- |
+| POST   | `/api/auth/login`       | User login (token stored securely in cookies)       |
+| POST   | `/api/auth/register`    | User registration                                   |
+| GET    | `/api/messages/:roomId` | Fetch chat history                                  |
+| GET    | `/api/auth/sidebar`     | Get list of sidebar users (requires authentication) |
+| POST   | `/api/messages`         | Send a new message                                  |
 
 ## Security
 
@@ -63,7 +66,6 @@ This is the backend service for the Chat Application. It provides APIs and handl
 ## License
 
 This project is licensed under the [MIT License](LICENSE) © 2025 Kalyan Kashaboina.
-
 
 ## Contributing
 

@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "prepare": "husky install",
+    "format": "prettier --write ."
   },
   "keywords": [],
   "author": "",
@@ -22,9 +24,19 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.0",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "winston": "^3.17.0",
+    "winston-mongodb": "^7.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "husky": "^8.0.0",
+    "lint-staged": "^16.1.2",
+    "nodemon": "^3.1.9",
+    "prettier": "^3.6.2"
+  },
+  "lint-staged": {
+    "**/*.{js,json,ts,tsx,jsx}": [
+      "prettier --write"
+    ]
   }
 }

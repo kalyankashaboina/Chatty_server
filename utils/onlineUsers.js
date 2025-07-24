@@ -33,13 +33,13 @@ const removeUser = (userId, socketId) => {
 // Get the list of all online users
 const getOnlineUsers = () => {
   const users = Object.fromEntries(onlineUsers);
-  console.log("🔑 Online users:", users);
+  console.log('🔑 Online users:', users);
   return users;
 };
 
 // Get all socket IDs associated with a user (always returns an array)
-const getSocketIdByUserId = (userId) => {
-  console.log("🔑 Getting socket for:", userId);
+const getSocketIdByUserId = userId => {
+  console.log('🔑 Getting socket for:', userId);
   return onlineUsers.get(userId) || []; // Return an empty array if no socket found
 };
 

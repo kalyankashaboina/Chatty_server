@@ -1,5 +1,5 @@
 const express = require('express');
-const { sendMessage, getMessages,getLast20Messages } = require('../controllers/messageController');
+const { sendMessage, getMessages, getLast20Messages } = require('../controllers/messageController');
 
 const router = express.Router();
 

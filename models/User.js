@@ -9,23 +9,25 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: true, 
+    unique: true,
   },
   password: {
     type: String,
     required: true,
   },
-  chats: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Chat',
-  }],
+  chats: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Chat',
+    },
+  ],
   lastSeen: {
-    type: Date, 
-    default: Date.now, 
+    type: Date,
+    default: Date.now,
   },
   isOnline: {
     type: Boolean,
-    default: false,  
+    default: false,
   },
 });
 

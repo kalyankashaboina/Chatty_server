@@ -1,9 +1,8 @@
 const jwt = require('jsonwebtoken');
 const cookie = require('cookie');
 
-
 // Generate JWT token
-const generateToken = (userId) => {
+const generateToken = userId => {
   try {
     return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '1D' });
   } catch (error) {
@@ -12,7 +11,7 @@ const generateToken = (userId) => {
 };
 
 // Verify JWT token
-const verifyToken = (token) => {
+const verifyToken = token => {
   try {
     return jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
@@ -28,28 +27,27 @@ const setTokenCookie = (res, token) => {
     sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
     maxAge: 24 * 60 * 60 * 1000,
   });
-  console.log("✅ Token set in cookie:", token);  
+  console.log('✅ Token set in cookie:', token);
 };
 
 // Retrieve token from cookies in the request
-const getTokenFromCookies = (req) => {
-console.log("🔑 Token from cookies in auth.js:", req.headers.cookie)
+const getTokenFromCookies = req => {
+  console.log('🔑 Token from cookies in auth.js:', req.headers.cookie);
 
   const cookies = req.headers.cookie;
   if (!cookies) return null;
-  
+
   const parsedCookies = cookie.parse(cookies);
-  console.log("🔑 Parsed cookies:", parsedCookies)
+  console.log('🔑 Parsed cookies:', parsedCookies);
   return parsedCookies.token || null;
 };
 
-
 // 🔐 Retrieve token from Authorization header
-const getTokenFromAuthHeader = (req) => {
+const getTokenFromAuthHeader = req => {
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
-    console.log("🔑 Token from Authorization header:", token);
+    console.log('🔑 Token from Authorization header:', token);
     return token;
   }
   return null;
