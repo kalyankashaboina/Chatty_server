@@ -7,7 +7,6 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "prepare": "husky install",
     "format": "prettier --write ."
   },
   "keywords": [],
@@ -26,8 +25,8 @@
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "winston": "^3.17.0",
-    "winston-mongodb": "^7.0.0",
-    "husky": "^8.0.0"
+    "winston-mongodb": "^7.0.0"
+  
   },
   "devDependencies": {
     "husky": "^8.0.0",

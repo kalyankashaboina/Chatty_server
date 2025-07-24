@@ -15,3 +15,8 @@ npm-debug.log*
 # IDEs
 .vscode
 .idea
+
+
+#having probelm withhusky
+.husky/
+
