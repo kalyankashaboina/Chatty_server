@@ -65,6 +65,7 @@ const login = async (req, res) => {
     res.status(200).json({
       message: 'Login successful',
       user: { id: user._id, username: user.username, email: user.email },
+      token,
     });
     logger.info(`✅ User logged in: ${user.username} (${user._id})`);
   } catch (error) {
@@ -105,7 +106,7 @@ const sidebarUsers = async (req, res) => {
     if (!users) {
       return res.status(404).json({ message: 'No users found' });
     }
-    logger.info(`Sidebar users:\n${JSON.stringify(users, null, 2)}`);
+    // logger.info(`Sidebar users:\n${JSON.stringify(users, null, 2)}`);
 
     res.status(200).json({ users });
   } catch (error) {

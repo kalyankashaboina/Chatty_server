@@ -17,6 +17,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'https://chatty-navy.vercel.app',
+  'http://192.168.50.10:5173'
 ];
 
 app.use(cookieParser());

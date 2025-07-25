@@ -1,4 +1,4 @@
-const { verifyToken, getTokenFromCookies } = require('./auth');
+const { getTokenFromCookies } = require('./auth');
 const { addUser, removeUser, getOnlineUsers, getSocketIdByUserId } = require('./onlineUsers');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
@@ -6,97 +6,80 @@ const { addMessageToQueue } = require('./messageQueue');
 const Message = require('../models/Message');
 const logger = require('./logger');
 
-const handleSocketConnection = io => {
-  io.on('connection', socket => {
-    let token = getTokenFromCookies(socket.request);
-    logger.info('🔑 Token from cookies:', token);
+
+const handleSocketConnection = (io) => {
+  io.on('connection', (socket) => {
+    logger.info('🔌 Incoming socket connection attempt...');
+
+    const authToken = socket.handshake.auth?.token;
+    const cookieToken = getTokenFromCookies(socket.request);
+    const token = authToken || cookieToken;
+
+    logger.info(`🔑 Token received from client: ${token ? 'Yes' : 'No'}`);
+
     if (!token) {
-      logger.info('❌ No token, disconnecting socket');
-      return socket.disconnect();
+      logger.warn('❌ No token provided. Disconnecting socket...');
+      return socket.disconnect(true);
     }
 
     jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
-      if (err) {
-        logger.info('❌ Invalid token');
-        return socket.disconnect();
+      if (err || !decoded?.userId) {
+        logger.error(`❌ Invalid or expired token: ${err?.message}`);
+        return socket.disconnect(true);
       }
 
       const userId = decoded.userId;
       socket.userId = userId;
 
-      // Add the user to the online users
+      logger.info(`✅ Token verified. User ID: ${userId} | Socket ID: ${socket.id}`);
+
       addUser(userId, socket.id);
 
       try {
         await User.findByIdAndUpdate(userId, { isOnline: true });
-      } catch (e) {
-        logger.error('❌ Error updating user online status:', e);
+        logger.info(`🟢 User marked online in DB: ${userId}`);
+      } catch (err) {
+        logger.error(`❌ Failed to update online status in DB for ${userId}: ${err.message}`);
       }
 
-      // Log current online users
-      logger.info(
-        '🔑 Current online users after connection:',
-        JSON.stringify(getOnlineUsers(), null, 2)
-      );
+      logger.info('👥 Online users snapshot:', getOnlineUsers());
 
-      // Broadcast user online status to others
       socket.broadcast.emit('userOnline', { userId });
-      logger.info(`✅ User ${userId} connected (Socket ID: ${socket.id})`);
 
-      // Video call feature - Offer
+      // Video call signaling events
       socket.on('offer', (offer, recipientId) => {
-        logger.info(`📞 Offer received from ${socket.userId} to ${recipientId}`);
-        const recipientSocketId = getSocketIdByUserId(recipientId);
-        if (recipientSocketId.length > 0) {
-          recipientSocketId.forEach(sid => io.to(sid).emit('offer', offer, socket.userId));
-        }
+        logger.info(`📞 Offer: ${userId} -> ${recipientId}`);
+        getSocketIdByUserId(recipientId).forEach(sid => io.to(sid).emit('offer', offer, userId));
       });
 
-      // Video call feature - Answer
       socket.on('answer', (answer, recipientId) => {
-        logger.info(`📞 Answer received from ${socket.userId} to ${recipientId}`);
-        const recipientSocketId = getSocketIdByUserId(recipientId);
-        if (recipientSocketId.length > 0) {
-          recipientSocketId.forEach(sid => io.to(sid).emit('answer', answer, socket.userId));
-        }
+        logger.info(`📞 Answer: ${userId} -> ${recipientId}`);
+        getSocketIdByUserId(recipientId).forEach(sid => io.to(sid).emit('answer', answer, userId));
       });
 
-      // Video call feature - ICE Candidate
       socket.on('ice-candidate', (candidate, recipientId) => {
-        logger.info(`📞 ICE candidate received from ${socket.userId} to ${recipientId}`);
-        const recipientSocketId = getSocketIdByUserId(recipientId);
-        if (recipientSocketId.length > 0) {
-          recipientSocketId.forEach(sid =>
-            io.to(sid).emit('ice-candidate', candidate, socket.userId)
-          );
-        }
+        logger.info(`📞 ICE Candidate: ${userId} -> ${recipientId}`);
+        getSocketIdByUserId(recipientId).forEach(sid => io.to(sid).emit('ice-candidate', candidate, userId));
       });
 
-      // Typing and stopped typing events
       socket.on('typing', ({ recipientId }) => {
-        const recipientSockets = getSocketIdByUserId(recipientId);
-        if (recipientSockets.length > 0) {
-          recipientSockets.forEach(sid => io.to(sid).emit('typing', { senderId: userId }));
-        }
+        logger.info(`⌨️ Typing: ${userId} -> ${recipientId}`);
+        getSocketIdByUserId(recipientId).forEach(sid => io.to(sid).emit('typing', { senderId: userId }));
       });
 
       socket.on('stoppedTyping', ({ recipientId }) => {
-        const recipientSockets = getSocketIdByUserId(recipientId);
-        if (recipientSockets.length > 0) {
-          recipientSockets.forEach(sid => io.to(sid).emit('stoppedTyping', { senderId: userId }));
-        }
+        logger.info(`🛑 Stopped typing: ${userId} -> ${recipientId}`);
+        getSocketIdByUserId(recipientId).forEach(sid => io.to(sid).emit('stoppedTyping', { senderId: userId }));
       });
 
-      // Sending messages
-      socket.on('sendMessage', data => {
+      socket.on('sendMessage', (data) => {
         const { recipientId, content, type = null, mediaUrl = null } = data;
-        const senderId = userId;
-        const recipientSockets = getSocketIdByUserId(recipientId);
 
-        if (mediaUrl) logger.info('🌐 Media URL:', mediaUrl);
+        logger.info(`✉️ Message sent: ${userId} -> ${recipientId} | type: ${type}`);
+        if (mediaUrl) logger.info(`📎 Media URL: ${mediaUrl}`);
 
         addMessageToQueue({
-          sender: senderId,
+          sender: userId,
           recipient: recipientId,
           content,
           type,
@@ -104,29 +87,19 @@ const handleSocketConnection = io => {
           timestamp: new Date(),
         });
 
-        // Log current online users before sending the message
-        logger.info(
-          '🔑 Current online users before sending message:',
-          JSON.stringify(getOnlineUsers(), null, 2)
-        );
-
+        const recipientSockets = getSocketIdByUserId(recipientId);
         if (recipientSockets.length > 0) {
-          recipientSockets.forEach(sid => {
-            io.to(sid).emit('message', {
-              senderId,
-              type,
-              content,
-              mediaUrl,
-            });
-          });
-          logger.info('✅ Message delivered');
+          recipientSockets.forEach(sid =>
+            io.to(sid).emit('message', { senderId: userId, type, content, mediaUrl })
+          );
+          logger.info('✅ Message delivered to online user');
         } else {
-          logger.info('⚠️ Recipient offline. Message queued.');
+          logger.info('📥 Message queued: recipient offline');
         }
       });
 
-      // Fetch recent messages between users
-      socket.on('getRecentMessages', async otherUserId => {
+      socket.on('getRecentMessages', async (otherUserId) => {
+        logger.info(`📤 Fetching recent messages for ${userId} <-> ${otherUserId}`);
         try {
           const messages = await Message.find({
             $or: [
@@ -140,12 +113,13 @@ const handleSocketConnection = io => {
 
           socket.emit('recentMessages', messages.reverse());
         } catch (err) {
-          logger.error('❌ Error fetching recent messages:', err);
+          logger.error(`❌ Failed to fetch messages: ${err.message}`);
         }
       });
 
-      // Disconnect handling
-      socket.on('disconnect', async () => {
+      socket.on('disconnect', async (reason) => {
+        logger.warn(`❌ Socket disconnected: ${reason} | User ID: ${userId}`);
+
         removeUser(userId, socket.id);
 
         const remainingSockets = getSocketIdByUserId(userId);
@@ -153,30 +127,33 @@ const handleSocketConnection = io => {
           try {
             await User.findByIdAndUpdate(userId, {
               isOnline: false,
-              lastSeen: Date.now(),
+              lastSeen: new Date(),
             });
             socket.broadcast.emit('userOffline', { userId });
-            logger.info(`❌ User ${userId} disconnected (fully offline)`);
-          } catch (e) {
-            logger.error('❌ Error updating offline status:', e);
+            logger.info(`🟥 User ${userId} is now offline`);
+          } catch (err) {
+            logger.error(`❌ Error marking user offline: ${err.message}`);
           }
         } else {
-          logger.info(`👤 User ${userId} still has active connections`);
+          logger.info(`👤 User ${userId} still has other connections`);
         }
 
-        // Log current online users after disconnect
-        logger.info('🔑 Current online users after disconnect:', getOnlineUsers());
+        logger.info('🧍 Final online users snapshot:', getOnlineUsers());
       });
 
-      // Reconnection handling
       socket.on('reconnect', async () => {
+        logger.info(`🔁 Reconnect triggered by ${userId}`);
         try {
           await User.findByIdAndUpdate(userId, { isOnline: true });
           socket.broadcast.emit('userOnline', { userId });
-          logger.info(`✅ User ${userId} reconnected`);
-        } catch (e) {
-          logger.error('❌ Error updating user online status on reconnect:', e);
+        } catch (err) {
+          logger.error(`❌ Error on reconnect update: ${err.message}`);
         }
+      });
+
+      // Catch-all for unhandled events
+      socket.onAny((event, ...args) => {
+        logger.info(`📨 Received socket event: ${event}`, args);
       });
     });
   });

@@ -13,7 +13,7 @@ const logFormat = winston.format.combine(
   })
 );
 
-// Create the logger
+// Create the loggerccl
 const logger = winston.createLogger({
   level: 'info',
   format: logFormat,
