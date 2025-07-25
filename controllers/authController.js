@@ -7,11 +7,7 @@ const logger = require('../utils/logger');
 // Register user
 const register = async (req, res) => {
   const { username, email, password } = req.body;
-  logger.info('💬 Register attempt with data:', {
-    username,
-    email,
-    password,
-  });
+  logger.info(`💬 Register attempt with data: ${JSON.stringify({ username, email, password })}`);
 
   try {
     const userExists = await User.findOne({ $or: [{ email }, { username }] });

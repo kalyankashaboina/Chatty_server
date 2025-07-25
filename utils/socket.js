@@ -6,9 +6,8 @@ const { addMessageToQueue } = require('./messageQueue');
 const Message = require('../models/Message');
 const logger = require('./logger');
 
-
-const handleSocketConnection = (io) => {
-  io.on('connection', (socket) => {
+const handleSocketConnection = io => {
+  io.on('connection', socket => {
     logger.info('🔌 Incoming socket connection attempt...');
 
     const authToken = socket.handshake.auth?.token;
@@ -59,20 +58,26 @@ const handleSocketConnection = (io) => {
 
       socket.on('ice-candidate', (candidate, recipientId) => {
         logger.info(`📞 ICE Candidate: ${userId} -> ${recipientId}`);
-        getSocketIdByUserId(recipientId).forEach(sid => io.to(sid).emit('ice-candidate', candidate, userId));
+        getSocketIdByUserId(recipientId).forEach(sid =>
+          io.to(sid).emit('ice-candidate', candidate, userId)
+        );
       });
 
       socket.on('typing', ({ recipientId }) => {
         logger.info(`⌨️ Typing: ${userId} -> ${recipientId}`);
-        getSocketIdByUserId(recipientId).forEach(sid => io.to(sid).emit('typing', { senderId: userId }));
+        getSocketIdByUserId(recipientId).forEach(sid =>
+          io.to(sid).emit('typing', { senderId: userId })
+        );
       });
 
       socket.on('stoppedTyping', ({ recipientId }) => {
         logger.info(`🛑 Stopped typing: ${userId} -> ${recipientId}`);
-        getSocketIdByUserId(recipientId).forEach(sid => io.to(sid).emit('stoppedTyping', { senderId: userId }));
+        getSocketIdByUserId(recipientId).forEach(sid =>
+          io.to(sid).emit('stoppedTyping', { senderId: userId })
+        );
       });
 
-      socket.on('sendMessage', (data) => {
+      socket.on('sendMessage', data => {
         const { recipientId, content, type = null, mediaUrl = null } = data;
 
         logger.info(`✉️ Message sent: ${userId} -> ${recipientId} | type: ${type}`);
@@ -98,7 +103,7 @@ const handleSocketConnection = (io) => {
         }
       });
 
-      socket.on('getRecentMessages', async (otherUserId) => {
+      socket.on('getRecentMessages', async otherUserId => {
         logger.info(`📤 Fetching recent messages for ${userId} <-> ${otherUserId}`);
         try {
           const messages = await Message.find({
@@ -117,7 +122,7 @@ const handleSocketConnection = (io) => {
         }
       });
 
-      socket.on('disconnect', async (reason) => {
+      socket.on('disconnect', async reason => {
         logger.warn(`❌ Socket disconnected: ${reason} | User ID: ${userId}`);
 
         removeUser(userId, socket.id);
