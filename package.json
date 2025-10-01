@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepare": "husky install"
   },
   "keywords": [],
   "author": "",
@@ -34,7 +35,7 @@
     "prettier": "^3.6.2"
   },
   "lint-staged": {
-    "**/*.{js,json,ts,tsx,jsx}": [
+    "**/*.{js,ts,cjs}": [
       "prettier --write"
     ]
   }

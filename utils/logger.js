@@ -4,7 +4,7 @@ require('winston-mongodb');
 // MongoDB connection string (use environment variable in production)
 const MONGO_URI = process.env.MONGO_URI || 'your-mongodb-atlas-uri';
 const isProduction = process.env.NODE_ENV === 'production';
-
+console.log(`💡 Current NODE_ENV is: [${process.env.NODE_ENV}]`);
 // Define log format
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
