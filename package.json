@@ -8,8 +8,7 @@
     "dev": "nodemon --watch src --ext ts,json --exec ts-node src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "format": "prettier --write .",
-    "prepare": "is-ci || husky install"
+    "format": "prettier --write ."
   },
   "keywords": [],
   "author": "",
