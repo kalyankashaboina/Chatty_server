@@ -9,7 +9,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "format": "prettier --write .",
-    "prepare": "husky install"
+    "prepare": "is-ci || husky install"
   },
   "keywords": [],
   "author": "",
