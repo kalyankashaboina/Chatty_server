@@ -1,19 +1,19 @@
-const winston = require('winston');
-require('winston-mongodb');
+import winston from 'winston';
+import 'winston-mongodb';
 
-// MongoDB connection string (use environment variable in production)
 const MONGO_URI = process.env.MONGO_URI || 'your-mongodb-atlas-uri';
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Define log format
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  winston.format.printf(({ timestamp, level, message }) => {
-    return `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+  winston.format.printf(({ timestamp, level, message, ...meta }) => {
+    const metaString = Object.keys(meta).length ? ` | ${JSON.stringify(meta)}` : '';
+    return `[${timestamp}] ${level.toUpperCase()}: ${message}${metaString}`;
   })
 );
 
-// Create the loggerccl
+// Create the logger
 const logger = winston.createLogger({
   level: 'info',
   format: logFormat,
@@ -22,9 +22,9 @@ const logger = winston.createLogger({
       format: winston.format.combine(winston.format.colorize(), logFormat),
     }),
 
-    ...(isProduction
-      ? []
-      : [
+    // File transports for non-production
+    ...(!isProduction
+      ? [
           new winston.transports.File({
             filename: 'logs/error.log',
             level: 'error',
@@ -34,8 +34,10 @@ const logger = winston.createLogger({
             filename: 'logs/combined.log',
             format: logFormat,
           }),
-        ]),
+        ]
+      : []),
 
+    // MongoDB transport
     new winston.transports.MongoDB({
       level: 'info',
       db: MONGO_URI,
@@ -48,4 +50,4 @@ const logger = winston.createLogger({
   ],
 });
 
-module.exports = logger;
+export default logger;

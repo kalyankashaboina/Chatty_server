@@ -1,44 +1,47 @@
-const jwt = require('jsonwebtoken');
-const cookie = require('cookie');
-const logger = require('./logger');
+import jwt from 'jsonwebtoken';
+import { Response, Request } from 'express';
+import cookie from 'cookie';
+import logger from './logger';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 
 // Generate JWT token
-const generateToken = userId => {
+export const generateToken = (userId: string): string => {
   try {
-    const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '1D' });
+    const token = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '1d' });
     logger.info('✅ Token generated:', token);
     return token;
-  } catch (error) {
+  } catch (error: any) {
     logger.error('❌ Error generating token:', error);
     throw new Error('Error generating token');
   }
 };
 
 // Verify JWT token
-const verifyToken = token => {
+export const verifyToken = (token: string): any => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     logger.info('✅ Token verified successfully:', decoded);
     return decoded;
-  } catch (error) {
+  } catch (error: any) {
     logger.error('❌ Invalid or expired token:', error.message);
     throw new Error('Invalid or expired token');
   }
 };
 
 // Set token as a cookie in response
-const setTokenCookie = (res, token) => {
+export const setTokenCookie = (res: Response, token: string): void => {
   res.cookie('token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
-    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
   });
   logger.info('✅ Token set in cookie:', token);
 };
 
 // Retrieve token from cookies in the request
-const getTokenFromCookies = req => {
+export const getTokenFromCookies = (req: Request): string | null => {
   logger.info('🔑 Incoming cookie header:', req.headers.cookie);
 
   const cookies = req.headers.cookie;
@@ -53,25 +56,17 @@ const getTokenFromCookies = req => {
   if (!parsedCookies.token) {
     logger.warn('⚠️ Token cookie not found');
   }
+
   return parsedCookies.token || null;
 };
 
-// 🔐 Retrieve token from Authorization header
-const getTokenFromAuthHeader = req => {
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.split(' ')[1];
+// Retrieve token from Authorization header
+export const getTokenFromAuthHeader = (req: Request): string | null => {
+  const token = req.headers.authorization?.split(' ')[1] ?? null;
+  if (token) {
     logger.info('🔑 Token from Authorization header:', token);
-    return token;
+  } else {
+    logger.warn('⚠️ Authorization header missing or malformed');
   }
-  logger.warn('⚠️ Authorization header missing or malformed');
-  return null;
-};
-
-module.exports = {
-  generateToken,
-  verifyToken,
-  setTokenCookie,
-  getTokenFromCookies,
-  getTokenFromAuthHeader,
+  return token;
 };
