@@ -84,22 +84,31 @@ export const handleSocketConnection = (io: Server) => {
       });
 
       // ===== Messaging =====
-      socket.on('sendMessage', (data: SendMessageData) => {
+
+      socket.on('sendMessage', async (data: SendMessageData) => {
         const { recipientId, content, type = 'text', mediaUrl } = data;
         if (!recipientId || (!content && !mediaUrl)) return;
 
-        addMessageToQueue({
-          sender: userId,
-          recipient: recipientId,
-          content: content || '',
-          type,
-          mediaUrl: mediaUrl || null,
-          timestamp: new Date(),
-        });
+        try {
+          const newMessage = await addMessageToQueue({
+            sender: userId,
+            recipient: recipientId,
+            content: content || '',
+            type,
+            mediaUrl: mediaUrl || null,
+            timestamp: new Date(),
+          });
 
-        getSocketIdByUserId(recipientId).forEach(sid =>
-          io.to(sid).emit('message', { senderId: userId, type, content, mediaUrl })
-        );
+          if (!newMessage) {
+            throw new Error('Message could not be created.');
+          }
+
+          getSocketIdByUserId(recipientId).forEach(sid => io.to(sid).emit('message', newMessage));
+        } catch (error) {
+          logger.error('💥 sendMessage error:', error);
+          // Optional: emit an error back to the sender
+          socket.emit('sendMessageError', { message: 'Could not send your message.' });
+        }
       });
 
       socket.on('getRecentMessages', async (otherUserId: string) => {

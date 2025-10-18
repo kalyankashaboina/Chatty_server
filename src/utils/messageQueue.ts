@@ -1,45 +1,36 @@
 // src/utils/messageQueue.ts
-import Message, { IMessage } from '../models/Message';
 
+import Message, { IMessage } from '../models/Message';
+import logger from './logger'; // Assuming you have a logger
+
+// Define the shape of the message data
 interface QueuedMessage {
   sender: string;
   recipient: string;
-  chat?: string;
   content?: string;
   type?: 'text' | 'audio' | 'video' | 'image' | 'file' | null;
   mediaUrl?: string | null;
   timestamp: Date;
 }
 
-// In-memory message buffer
-let messageBuffer: QueuedMessage[] = [];
-
 /**
- * Add a message to the in-memory queue.
+ * Creates and saves a message directly to the database.
+ * This is now an async function that returns the created message.
+ * @param messageData The data for the message.
+ * @returns The saved Mongoose document, or null if an error occurred.
  */
-export const addMessageToQueue = (message: QueuedMessage): void => {
-  messageBuffer.push(message);
-};
-
-/**
- * Flush the message buffer to MongoDB.
- * Uses insertMany for batch writes.
- */
-export const flushMessages = async (): Promise<void> => {
-  if (messageBuffer.length === 0) return;
-
-  const messagesToSave = [...messageBuffer]; // snapshot
-  messageBuffer = []; // clear buffer immediately to avoid blocking new messages
-
+export const addMessageToQueue = async (messageData: QueuedMessage): Promise<IMessage | null> => {
   try {
-    await Message.insertMany(messagesToSave, { ordered: false });
-    console.info(`🗂️ Flushed ${messagesToSave.length} messages to DB.`);
+    // 1. Create a new message instance from the data
+    const newMessage = new Message(messageData);
+
+    // 2. Save it to the database immediately and wait for the operation to complete
+    await newMessage.save();
+
+    // 3. Return the complete, saved message document (which now has an `_id`)
+    return newMessage;
   } catch (err: any) {
-    console.error('❌ Error saving messages batch:', err.message);
-    // Optionally, requeue failed messages if needed
-    // messageBuffer.push(...failedMessages);
+    logger.error('❌ Error saving message directly to DB:', err.message);
+    return null; // Return null to indicate failure
   }
 };
-
-// Flush the buffer every 5 seconds
-setInterval(flushMessages, 5000);

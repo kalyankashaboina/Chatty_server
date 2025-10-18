@@ -87,18 +87,19 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
 // ----------------------- GOOGLE LOGIN -----------------------
 export const googleLogin = async (req: Request, res: Response): Promise<void> => {
-  const { tokenId } = req.body as { tokenId: string };
-  if (!tokenId) {
-    res.status(400).json({ message: 'Token ID is required' });
+  // I am using 'googleToken' here to match your frontend code
+  const { googleToken } = req.body as { googleToken: string };
+  if (!googleToken) {
+    res.status(400).json({ message: 'Google Token is required' });
     return;
   }
 
   try {
     if (!process.env.GOOGLE_CLIENT_ID) throw new Error('GOOGLE_CLIENT_ID not set');
 
-    // ✅ Let TS infer the type
+    // Step 1: Verify the Google token
     const ticket = await client.verifyIdToken({
-      idToken: tokenId,
+      idToken: googleToken,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
 
@@ -109,17 +110,21 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
     }
 
     let user = await User.findOne({ email: payload.email });
-    if (!user) {
+
+    if (user) {
+      logger.info(`✅ Existing user found via Google email: ${user.email}`);
+
+      user.username = payload.name;
+      await user.save();
+    } else {
       user = new User({
         username: payload.name,
         email: payload.email,
-        password: await bcrypt.hash(Math.random().toString(36), 10), // random password
+        password: await bcrypt.hash(Math.random().toString(36), 10),
       });
-      logger.info('🔐 Creating new user from Google login:', user);
+      logger.info('🔐 Creating new user from Google login:', user.email);
       await user.save();
-      logger.info(`✅ New user created via Google: ${payload}`);
     }
-
     const token = generateToken(user._id.toString());
     setTokenCookie(res, token);
 
