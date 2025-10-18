@@ -19,7 +19,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
   if (!username || !email || !password) {
     res.status(400).json({ message: 'All fields are required' });
-    logger.warn('❌ Missing registration fields', req.body);
+    // logger.warn('❌ Missing registration fields', req.body);
     return;
   }
 
@@ -27,7 +27,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const existingUser = await User.findOne({ $or: [{ username }, { email }] }).lean();
     if (existingUser) {
       res.status(400).json({ message: 'User with this email or username already exists' });
-      logger.info(`❌ Registration failed - user exists: ${email} / ${username}`);
+      // logger.info(`❌ Registration failed - user exists: ${email} / ${username}`);
       return;
     }
 
@@ -39,7 +39,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       message: 'User registered successfully',
       user: { id: newUser._id, username, email },
     });
-    logger.info('✅ User registered successfully:', { id: newUser._id, username, email });
+    // logger.info('✅ User registered successfully:', { id: newUser._id, username, email });
   } catch (err: any) {
     logger.error('💥 Registration error:', err);
     res.status(500).json({ message: 'Internal Server Error. Please try again later.' });
@@ -67,7 +67,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const isMatch = await bcrypt.compare(password, (user as any).password);
     if (!isMatch) {
       res.status(400).json({ message: 'Invalid credentials' });
-      logger.info(`❌ Login failed - invalid credentials: ${email}`);
+      // logger.info(`❌ Login failed - invalid credentials: ${email}`);
       return;
     }
 
@@ -78,7 +78,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       message: 'Login successful',
       user: { id: user._id.toString(), username: user.username, email: user.email },
     });
-    logger.info(`✅ User logged in: ${user.username} (${user._id})`);
+    // logger.info(`✅ User logged in: ${user.username} (${user._id})`);
   } catch (err: any) {
     logger.error('💥 Login error:', err);
     res.status(500).json({ message: 'Internal Server Error. Please try again later.' });
@@ -122,7 +122,7 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
         email: payload.email,
         password: await bcrypt.hash(Math.random().toString(36), 10),
       });
-      logger.info('🔐 Creating new user from Google login:', user.email);
+      // logger.info('🔐 Creating new user from Google login:', user.email);
       await user.save();
     }
     const token = generateToken(user._id.toString());
@@ -132,7 +132,7 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
       message: 'Google login successful',
       user: { id: user._id.toString(), username: user.username, email: user.email },
     });
-    logger.info(`✅ User logged in via Google: ${user.email}`);
+    // logger.info(`✅ User logged in via Google: ${user.email}`);
   } catch (err: any) {
     logger.error('💥 Google login error:', err);
     res.status(500).json({ message: 'Google login failed', error: err.message });
@@ -157,7 +157,7 @@ export const logout = (req: Request, res: Response): void => {
 
 // ----------------------- SIDEBAR USERS -----------------------
 export const sidebarUsers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  logger.info('👥 Fetching sidebar users...', req.user);
+  // logger.info('👥 Fetching sidebar users...', req.user);
   const userId = req.user?.id;
   if (!userId) {
     res.status(401).json({ message: 'Unauthorized' });
@@ -176,7 +176,7 @@ export const sidebarUsers = async (req: AuthenticatedRequest, res: Response): Pr
     }
 
     res.status(200).json({ users });
-    logger.info(`✅ Sidebar users fetched for userId: ${userId}`);
+    // logger.info(`✅ Sidebar users fetched for userId: ${userId}`);
   } catch (err: any) {
     logger.error('💥 Sidebar fetch error:', err);
     res.status(500).json({ message: 'Internal Server Error. Please try again later.' });

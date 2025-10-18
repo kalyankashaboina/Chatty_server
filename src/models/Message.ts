@@ -5,7 +5,7 @@ import mongoose, { Schema, Document, Types, model } from 'mongoose';
 export interface IMessage extends Document {
   sender: Types.ObjectId;
   receiver: Types.ObjectId;
-  chat: Types.ObjectId;
+  chat?: Types.ObjectId;
   type: 'text' | 'audio' | 'video' | 'image' | 'file';
   content?: string;
   mediaUrl?: string;
@@ -21,7 +21,6 @@ const messageSchema = new Schema<IMessage>(
     chat: {
       type: Schema.Types.ObjectId,
       ref: 'Chat',
-      required: true,
       index: true,
     },
     type: {

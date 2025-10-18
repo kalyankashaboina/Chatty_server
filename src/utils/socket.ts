@@ -50,7 +50,7 @@ export const handleSocketConnection = (io: Server) => {
       try {
         await User.findByIdAndUpdate(userId, { isOnline: true });
         socket.broadcast.emit('userOnline', { userId });
-        logger.info(`🟢 User ${userId} is online`);
+        // logger.info(`🟢 User ${userId} is online`);
       } catch (err: any) {
         logger.error(`❌ Failed to mark user online: ${err.message}`);
       }
@@ -92,7 +92,7 @@ export const handleSocketConnection = (io: Server) => {
         try {
           const newMessage = await addMessageToQueue({
             sender: userId,
-            recipient: recipientId,
+            receiver: recipientId,
             content: content || '',
             type,
             mediaUrl: mediaUrl || null,
@@ -106,7 +106,6 @@ export const handleSocketConnection = (io: Server) => {
           getSocketIdByUserId(recipientId).forEach(sid => io.to(sid).emit('message', newMessage));
         } catch (error) {
           logger.error('💥 sendMessage error:', error);
-          // Optional: emit an error back to the sender
           socket.emit('sendMessageError', { message: 'Could not send your message.' });
         }
       });
@@ -140,7 +139,7 @@ export const handleSocketConnection = (io: Server) => {
           try {
             await User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: new Date() });
             socket.broadcast.emit('userOffline', { userId });
-            logger.info(`🟥 User ${userId} is now offline`);
+            // logger.info(`🟥 User ${userId} is now offline`);
           } catch (err: any) {
             logger.error(`❌ Error marking user offline: ${err.message}`);
           }
